@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>scan the polaroids &lt;3</title>
+
+    <!-- Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- A-Frame + MindAR -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+      :root {
+        --bg: #fbf4f4;
+        --polaroid: #ffffff;
+        --muted: #3a3a3a;
+        --shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: #000; /* camera scene behind overlay */
+        font-family: "Poppins", system-ui, -apple-system, sans-serif;
+        overflow: hidden;
+      }
+
+      /* MindAR full-screen */
+      a-scene { position: fixed; inset: 0; }
+
+      /* Intro overlay (loading UI) */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+        padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+        transition: opacity 260ms ease, transform 260ms ease;
+      }
+      .overlay.hidden {
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+      }
+
+      .polaroid {
+        width: min(360px, 84vw);
+        background: var(--polaroid);
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .polaroid__photo {
+        aspect-ratio: 1 / 1;
+        border: 2px solid rgba(0, 0, 0, 0.18);
+        background: #f6c1cc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .polaroid__photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .polaroid__caption {
+        margin-top: 18px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      /* Glass button */
+      .next-btn {
+        width: 200px;
+        height: 48px;
+        border-radius: 12px;
+
+        background: rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+
+        border: 1.5px solid rgba(255, 255, 255, 0.7);
+        color: #2a2a2a;
+
+        font-family: "Poppins", sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        touch-action: manipulation;
+      }
+      .next-btn:active {
+        transform: translateY(1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      }
+
+      /* Small in-AR hint after starting */
+      .arHint {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        left: 12px;
+        right: 12px;
+        z-index: 6;
+        display: none;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .arHint .pill {
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 10px 14px;
+        border-radius: 999px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+        font-size: 13.5px;
+        color: #2a2a2a;
+      }
+
+      /* Hide A-Frame’s AR/VR buttons */
+      .a-enter-vr, .a-enter-ar { display: none !important; }
+    </style>
+  </head>
+
+  <body>
+    <!-- MindAR scene (starts only after Next click) -->
+    <a-scene
+      id="scene"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      mindar-image="imageTargetSrc: assets/targets.mind; autoStart: false;"
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+    >
+      <a-assets>
+        <!-- 5 videos for 5 targets (0..4) -->
+        <video id="v0" src="assets/v0.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
+        <video id="v1" src="assets/v1.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
+        <video id="v2" src="assets/v2.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
+        <video id="v3" src="assets/v3.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
+        <video id="v4" src="assets/v4.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Targets 0..4: each shows its matching video (NO fixed width/height; auto-sized in JS) -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-plane class="vidplane" position="0 0 0" material="shader: flat; src: #v0; opacity: 0;"></a-plane>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 1">
+        <a-plane class="vidplane" position="0 0 0" material="shader: flat; src: #v1; opacity: 0;"></a-plane>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-plane class="vidplane" position="0 0 0" material="shader: flat; src: #v2; opacity: 0;"></a-plane>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-plane class="vidplane" position="0 0 0" material="shader: flat; src: #v3; opacity: 0;"></a-plane>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 4">
+        <a-plane class="vidplane" position="0 0 0" material="shader: flat; src: #v4; opacity: 0;"></a-plane>
+      </a-entity>
+    </a-scene>
+
+    <!-- Overlay intro UI -->
+    <div class="overlay" id="intro">
+      <section class="polaroid">
+        <div class="polaroid__photo">
+          <img src="assets/polaroid.png" alt="polaroid" />
+        </div>
+        <div class="polaroid__caption">
+          scan the<br />polaroids &lt;3
+        </div>
+      </section>
+
+      <button class="next-btn" id="nextBtn">next &gt;&gt;</button>
+    </div>
+
+    <!-- Hint after AR starts -->
+    <div class="arHint" id="arHint">
+      <div class="pill">hi baby! point your camera at a polaroid ✨</div>
+    </div>
+
+    <script>
+      const intro = document.getElementById("intro");
+      const nextBtn = document.getElementById("nextBtn");
+      const arHint = document.getElementById("arHint");
+      const sceneEl = document.getElementById("scene");
+
+      // ✅ Auto-size each plane to its video's real aspect ratio (works for mixed dimensions)
+      function setPlaneSizeFromVideo(targetIndex, videoId, baseHeight = 0.75) {
+        const targetEl = document.querySelector(`[mindar-image-target="targetIndex: ${targetIndex}"]`);
+        const plane = targetEl?.querySelector("a-plane");
+        const video = document.getElementById(videoId);
+        if (!targetEl || !plane || !video) return;
+
+        const apply = () => {
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (!vw || !vh) return false;
+
+          const ratio = vw / vh;           // width/height
+          const height = baseHeight;
+          const width = height * ratio;    // preserve aspect
+          plane.setAttribute("height", height);
+          plane.setAttribute("width", width);
+          return true;
+        };
+
+        // Try immediately (sometimes metadata already loaded)
+        if (apply()) return;
+
+        // Otherwise wait until metadata is available
+        const onMeta = () => apply();
+        const onCanPlay = () => apply();
+
+        video.addEventListener("loadedmetadata", onMeta, { once: true });
+        video.addEventListener("canplay", onCanPlay, { once: true });
+
+        // Encourage loading metadata
+        try { video.load(); } catch (e) {}
+      }
+
+      async function startMindAR() {
+        const mindarSystem = sceneEl.systems["mindar-image-system"];
+        if (!mindarSystem) throw new Error("MindAR system not ready yet");
+
+        await mindarSystem.start(); // starts camera + tracking
+        arHint.style.display = "flex";
+
+        // iOS-friendly: pre-warm all videos AFTER user gesture,
+        // and size planes once metadata is available.
+        for (const [idx, id] of [[0,"v0"],[1,"v1"],[2,"v2"],[3,"v3"],[4,"v4"]]) {
+          setPlaneSizeFromVideo(idx, id, 0.75);
+          const vid = document.getElementById(id);
+          if (!vid) continue;
+          try { await vid.play(); vid.pause(); } catch (e) { /* ignore */ }
+        }
+      }
+
+      nextBtn.addEventListener("click", async () => {
+        if (navigator.vibrate) navigator.vibrate(10);
+        intro.classList.add("hidden");
+
+        try {
+          await startMindAR();
+        } catch (err) {
+          console.error(err);
+          intro.classList.remove("hidden");
+          alert("Camera permission is needed to scan the polaroids 💘");
+        }
+      });
+
+      // Play/pause + fade per target
+      function wireTarget(index, videoId) {
+        const targetEl = document.querySelector(`[mindar-image-target="targetIndex: ${index}"]`);
+        const vid = document.getElementById(videoId);
+        const plane = targetEl?.querySelector("a-plane");
+        if (!targetEl || !vid || !plane) return;
+
+        targetEl.addEventListener("targetFound", async () => {
+          // Ensure sizing is applied (in case metadata arrived late)
+          setPlaneSizeFromVideo(index, videoId, 0.75);
+
+          plane.setAttribute(
+            "animation__fadein",
+            "property: material.opacity; from: 0; to: 1; dur: 250; easing: easeOutQuad"
+          );
+          try {
+            vid.currentTime = 0;
+            await vid.play();
+          } catch (e) {}
+        });
+
+        targetEl.addEventListener("targetLost", () => {
+          plane.setAttribute(
+            "animation__fadeout",
+            "property: material.opacity; from: 1; to: 0; dur: 200; easing: easeInQuad"
+          );
+          try { vid.pause(); } catch (e) {}
+        });
+      }
+
+      wireTarget(0, "v0");
+      wireTarget(1, "v1");
+      wireTarget(2, "v2");
+      wireTarget(3, "v3");
+      wireTarget(4, "v4");
+
+      // Stop AR when tab hidden (saves battery)
+      document.addEventListener("visibilitychange", () => {
+        const mindarSystem = sceneEl.systems["mindar-image-system"];
+        if (!mindarSystem) return;
+
+        if (document.hidden) {
+          mindarSystem.stop();
+          arHint.style.display = "none";
+          intro.classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
